@@ -2,7 +2,7 @@ import cv2
 import os
 import numpy as np
 from skimage.filters import gaussian
-from test import evaluate
+from test import evaluate, evaluate_with_im
 import argparse
 
 
@@ -54,8 +54,66 @@ def hair(image, parsing, part=17, color=[230, 50, 20]):
     changed[parsing != part] = image[parsing != part]
     return changed
 
+last = 0
+
+
+def t(msg=''):
+    global last
+    now = time.time()
+    print(msg, now - last)
+    last = now
+
+
+class TimePoint:
+    def __init__(self):
+        self.start_time = self.now()
+        self.last = self.start_time
+
+    def now(self):
+        import time
+        return time.time()
+
+    def tick(self, msg=''):
+        now = self.now()
+        print(msg, now - self.last)
+        self.last = now
+
+
+def gen(origin_image, parts, colors):
+    """
+    :param origin_image:  cv2 image
+    :param parts: list  transform types.
+    :param colors: list  target BGR colors.
+
+    transform_type = {
+        'hair': 17,
+        'upper_lip': 12,
+        'lower_lip': 13,
+        'teeth': 11,
+        'face': 1
+    }
+    """
+    tp = TimePoint()
+    # image_path = args.img_path
+    cp = 'cp/79999_iter.pth'
+
+    # image = cv2.imread(image_path)
+    image = origin_image.copy()
+    parsing = evaluate_with_im(image, cp)
+    parsing = cv2.resize(parsing, image.shape[0:2], interpolation=cv2.INTER_NEAREST)
+
+    for part, color in zip(parts, colors):
+        image = hair(image, parsing, part, color)
+        tp.tick('hair, part: {}, color: {}'.format(part, color))
+
+    return image
+
 
 if __name__ == '__main__':
+    import time
+    start_time = time.time()
+    last = start_time
+
     # 1  face
     # 11 teeth
     # 12 upper lip
@@ -67,29 +125,41 @@ if __name__ == '__main__':
     table = {
         'hair': 17,
         'upper_lip': 12,
-        'lower_lip': 13
+        'lower_lip': 13,
+        'teeth': 11,
+        'face': 1
     }
 
     image_path = args.img_path
     cp = 'cp/79999_iter.pth'
 
     image = cv2.imread(image_path)
+    t('read')
     ori = image.copy()
+    t('copy')
     parsing = evaluate(image_path, cp)
+    t('parsing')
     parsing = cv2.resize(parsing, image.shape[0:2], interpolation=cv2.INTER_NEAREST)
+    t('parsing2')
 
-    parts = [table['hair'], table['upper_lip'], table['lower_lip']]
+    parts = [table['hair'], table['upper_lip'], table['lower_lip'], table['teeth'], table['face']]
 
-    colors = [[230, 50, 20], [20, 70, 180], [20, 70, 180]]
+    colors = [[127, 127, 127], [0, 255, 0], [255, 0, 0], [0, 255, 255], [129, 64, 255]]
 
     for part, color in zip(parts, colors):
         image = hair(image, parsing, part, color)
+        t('hair')
 
-    cv2.imshow('image', cv2.resize(ori, (512, 512)))
-    cv2.imshow('color', cv2.resize(image, (512, 512)))
+    if False:
+        cv2.imshow('image', cv2.resize(ori, (512, 512)))
+        cv2.imshow('color', cv2.resize(image, (512, 512)))
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    import time
+    cv2.imwrite('/tmp/{}.jpg'.format(time.time()), image)
+    t('write')
 
 
 
