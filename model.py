@@ -9,6 +9,7 @@ import torchvision
 
 
 from face_parsing.resnet import Resnet18
+### TO Check - from face_parsing.resnet import Resnet18 (instead of face_parsing)
 #from resnet import Resnet18
 # from modules.bn import InPlaceABNSync as BatchNorm2d
 
